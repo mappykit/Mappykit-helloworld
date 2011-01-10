@@ -1,0 +1,431 @@
+
+MappyKit hello world iphone edition
+===================================
+
+# Context
+
+This sample show a simple iphone tutorial.
+
+# Integration
+
+## First part : map and geolocalisation integration
+
+This part explains how to create a simple native iphone application which show a map and allow to search for literal address.
+
+### Step 1 : Add a Mappy view
+
+In Xcode File->New Project.
+
+In iphone section choose View-Based Application.
+
+Set the name : HelloMappy.
+
+Open HelloMappyViewController.xib with Interface Builder
+
+Show the Library : Tool->Library
+
+Add a searchBar and add a View under.
+
+[![AfterCreationThumb]][AfterCreation]
+
+Open Tool->Identity Inspector
+
+Select the view and set the class attribut to RMMapView.
+
+[![SetClassNameThumb]][SetClassName]
+
+Save the View.
+
+In Xcode open HelloMappyViewController.h.
+
+Add under UIkit import
+
+     #import <MappyKit/MappyKit.h> 
+
+Open HelloMappyViewController.m
+
+Uncomment viewDidLoad method.
+
+Set to :
+
+      // Implement viewDidLoad to do additional setup after loading the view.
+      - (void)viewDidLoad {
+          [super viewDidLoad];
+          //initialisation
+          [MPInit initialisation:@"myApiKey"];
+          [RMMapView class];
+      }
+
+
+Replace apiKey by the one provided by Mappy SA.
+
+### Step 2 : Add MappyKit Framework
+
+In Xcode -> Groups & Files panel -> Targets, double click on HellowMappy.
+
+In the windows Target "HelloMappy" Info add linked library.
+
+Click on + add CoreLocation, QuartzCore and libsqlite3.dylib
+
+Click on + add Other library.
+
+Go to MappyKit.framework directory and add it.
+
+Click on Add. Do not check copy items.
+
+[![FrameworkIntegrationThumb]][FrameworkIntegration]
+
+In Project-> edit Project Settings for all configurations and all settings.
+
+For Other Linker Flags add -ObjC and -all_load.
+
+[![LinkerFlagsThumb]][LinkerFlags]
+
+Buid and Run in simulator.
+
+The map view is integrated.
+
+### Step 3 : Prepare the controller
+
+Open HelloMappyViewController.xib
+
+In Interface builder -> Attributes Inspector select "Shows Cancel Button"
+
+Save.
+
+In Xcode open HelloMappyViewController.h
+
+Set to
+
+      @interface HelloMappyViewController : UIViewController {
+        RMMapView * mapView;
+        UISearchBar *searchBar;
+      }
+ 
+      @property (nonatomic, retain) IBOutlet RMMapView *mapView;
+      @property (nonatomic, retain) IBOutlet UISearchBar *searchBar;
+
+Open HelloMappyViewController.m
+
+Set to :
+
+      @implementation HelloMappyViewController
+     
+      @synthesize mapView;
+      @synthesize searchBar;
+
+Set dealloc method to be :
+
+      - (void) dealloc {
+        [mapView release];
+        [searchBar release];
+        [super dealloc];
+      }
+
+Open HelloMappyViewController.xib.
+
+In navigation window right click on View and link New Referencing Outlet to File's Owner.
+
+Do the same with Search Bar and select searchBar for target.
+
+[![SearchViewLinkThumb]][SearchViewLink]
+
+Link the delegate to File's Owner.
+
+Save the view.
+
+### Step 4 : Add User Location
+
+Open HelloMappyViewController.m
+
+In viewDidLoad method add showsUserLocation to YES.
+
+Set to :
+
+     // Implement viewDidLoad to do additional setup after loading the view.
+     - (void)viewDidLoad {
+         [super viewDidLoad];
+         //initialisation
+         [MPInit initialisation:@"myApiKey"];
+         [RMMapView class];
+         
+         //show user location
+         mapView.showsUserLocation = YES;
+     }
+
+In Xcode Open HelloMappyDelegate
+
+Import MappyKit
+
+      #import <MappyKit/MappyKit.h>
+
+Make the HelloMappyAppDelegate to implement RMMapViewDelegate
+  
+      @interface HelloMappyAppDelegate : NSObject <UIApplicationDelegate, RMMapViewDelegate> {
+      ...
+
+Open HelloMappyAppDelegate.m
+
+Set the RMMapViewDelegate methods:
+  
+      //disable map centrage on user
+      -(void) beforeMapMove:(RMMapView*)map
+      {
+          [viewController.mapView.userLocation setIsMapFollowMe:NO];
+      }
+
+### Step 5 :Add the geocoding service
+
+In Xcode Open HelloMappyDelegate
+
+Import MappyKit
+
+      #import <MappyKit/MappyKit.h>
+
+Make the HelloMappyAppDelegate to implement UISearchBarDelegate and MPGeolocDelegate
+
+      @interface HelloMappyAppDelegate : NSObject <UIApplicationDelegate, MPGeoLocDelegate, UISearchBarDelegate, RMMapViewDelegate> {
+      ...
+
+Open HelloMappyAppDelegate.m
+
+Set this object to be the delegate of the view controller :
+
+      -(void)applicationDidFinishLaunching:(UIApplication*)application {
+        [window addSubView:viewController.view];
+        viewController.mapView.delegate = self;
+        viewController.searchBar.delegate = self;
+        [window makeKeyAndVisible];
+      }
+
+Set the UISearchBarDelegate methods:
+
+      //gestion du search bar
+      - (void) searchBarSearchButtonClicked:(UISearchBar *)search
+      {
+            NSLog(@"%@", viewController.searchBar.text);
+            //make a geoloc call
+            [MPGeocoder geocode:viewController.searchBar.text delegate:self context:@"HM_SEARCH"];
+      }
+     
+      - (void)searchBarCancelButtonClicked:(UISearchBar *) searchBar{
+            [MPGeocoder cancelTasksWithDelegate:self];
+            [viewController.searchBar resignFirstResponder];
+      }
+
+This line : [MPGeocoder geocode:viewController.searchBar.text delegate:self context:@"HM_SEARCH"]; call the geocoding mappy service.
+
+Catch the geocoding answer and show a marker on map:
+
+In HelloMappyViewController.h define the category name.
+
+      #define HMP_LOC_CATEGORY @"loc"
+
+In HelloMappyViewController.m, initialize a new marker category.
+
+The code will be like that :
+
+      - (void)viewDidLoad {
+            [super viewDidLoad];
+            //initialisation
+            [MPInit initialisation:@"myApiKey"];
+            [RMMapView class];
+    
+            //show user location
+            mapView.showsUserLocation = YES;
+     
+            //get the marker manager
+            MPMarkerManager *markerManager = [mapView markerManager];
+            //add a new category with default orange color marker.
+            [markerManager addCategory:HMP_LOC_CATEGORY withColor:[UIColor orangeColor]];
+    }
+
+Catch the geocoder answer:
+
+      //geocoder mappy
+      - (void)didFindLocation:(MPLocationData *)locationData context:(id)aContext{
+            viewController.searchBar.text = locationData.address;
+            //hide the keyboard
+            [viewController.searchBar resignFirstResponder];
+      
+            CLLocationCoordinate2D findLocation = locationData.location.coordinate;
+            //move the map
+            [viewController.mapView setCenterCoordinate:findLocation];  
+      
+            //add a marker on map
+            MPMarkerManager *markerManager = [viewController.mapView markerManager];
+            MPMarkerCategory * category = [markerManager getCategory:HMP_LOC_CATEGORY];
+            //remove old elements	
+            [category.dataSource removeAllElements];
+            //create a new POI object with location	
+            MPPoi * poi = [[MPPoi alloc] initWithUId:locationData.address withLocation:findLocation];
+            [category.dataSource addElement:poi];
+            [poi release];
+      }
+
+And that's All.
+
+## Second Part : Find and show Mappy's point of interest
+
+This part explains how to add pois on map.
+It show how to add velib' stations around an adress.
+
+### Add a new poi category
+
+Define the category name in HelloMappyViewController.h
+
+      #define HMP_VELIB_CATEGORY @"velib"
+
+Initialize the category
+
+In HelloMappyViewController.m :
+
+      - (void)viewDidLoad {
+          //...
+          //add a new category with white default color
+          MPMarkerCategory * bikeCategory = [markerManager addCategory:HMP_VELIB_CATEGORY withColor:[UIColor whiteColor]];
+          //set animated apparition
+          bikeCategory.animateAtFirstShow = YES;
+      }
+
+### Add Mappy POI on the map
+
+In HelloMappyAppDelegate.m :
+
+      - (void)didFindLocation:(MPLocationData *)locationData context:(id)aContext{
+            //...
+            //new poi source
+            MPMarkerCategory * categoryVelib = [markerManager getCategory:HMP_VELIB_CATEGORY];
+            //add a new mappy poi datasource for velib; we limit the number of station showed to 5
+            MPPoiDataSourceMappy * dataSource = [[MPPoiDataSourceMappy alloc] initWithIdAndLocation:4347 location:locationData.location.coordinate number:5];
+            // if you don't want to upload periodicly the poi data source leave commented
+            //[dataSource setUpdatePeriod:30];
+            //set the zoom to be optimal : show all poi in the category
+            [categoryVelib setOptimalZoom:YES];
+            //set label hidden for the first appear on map
+            [categoryVelib setHideLabelOnTheFirstShow:YES];
+            [categoryVelib setDataSource:dataSource];
+            [dataSource release];
+      }
+
+### Retrieve action on marker
+
+This part explain how to catch action on marker. Look at doxygen documentation for more information.
+
+The label will be toggled when user tap on the marker:
+
+Define the tapOnMarker method :
+
+      - (void) tapOnMarker: (RMMarker*) marker 
+                             onMap: (RMMapView*) map
+      {
+            NSLog(@"MARKER TAPPED!");
+            [marker toggleLabel];	
+      }
+
+And that's All.
+
+## Third part : Add route ploting
+
+This tutorial explain how to compute a route and draw it on the map.
+
+### Init the dataSource
+
+Define the category name of route datasource in HelloMappyViewController.h
+
+     #define HMP_ITI_CATEGORY @"iti"
+
+Add two members to HelloMappyAppDelegate.
+
+In HelloMappyAppDelegate.h will be like that:
+
+      //...
+      @interface HelloMappyAppDelegate : NSObject <UIApplicationDelegate, MPGeoLocDelegate, UISearchBarDelegate, RMMapViewDelegate> {
+        UIWindow *window;
+        HelloMappyViewController *viewController;
+        MPItiDataSource * dataSourceIti;
+      }
+      //..
+
+In HelloMappyAppDelegate.cpp
+
+Add the release of the datasource by:
+
+      - (void)dealloc {
+        [dataSourceIti release];
+        //..
+      }
+
+### Request a route computing between the marker taped and user location
+
+All append in HelloMappyAppDelegate.cpp.
+
+Modify the tapOnMarker method to make the route request when the user tap on a marker.
+
+The code will be like that :
+
+      - (void) tapOnMarker: (RMMarker*) marker 
+                 		   onMap: (RMMapView*) map
+        {
+          if (marker != viewController.mapView.userLocation)
+          {
+              NSLog(@"MARKER TAPPED!");
+              [marker toggleLabel];
+              	
+              if (dataSourceIti != nil)
+              {
+                  [[viewController.mapView pathManager] removePath:HMP_ITI_CATEGORY];
+                  [dataSourceIti release];
+                  	
+              }
+      
+              //Create step list : start step : userLocation and arrival step : geoElement location.
+              CLLocation * userLoc = [[CLLocation alloc] initWithLatitude:viewController.mapView.userLocation.currentLocation.latitude longitude:viewController.mapView.userLocation.currentLocation.longitude];
+              CLLocation* loc = [[[CLLocation alloc] initWithLatitude:marker.geoElement.location.latitude longitude:marker.geoElement.location.longitude] autorelease];
+              NSArray * steps = [NSArray arrayWithObjects:userLoc, loc, nil]; 
+              [userLoc release];
+              //Create a bundle and the datasource
+              dataSourceIti = [[MPRouteWithStepDataSource alloc] init:steps withBundle:[MPRouteBundle routeBundleWithVehicule:PEDESTRIAN withCost:LENGTH]];
+              // create a polyline path
+              MPPath * path = [[MPPathPolyline alloc] init];
+              // set the polyline datasource
+              [path setDataSource:(id<MPPathDataSource>)[dataSourceIti pathDataSource]];
+              // add the new path in the path manager to be drawn on the map.
+              [[viewController.mapView pathManager] addPath:path withName:HMP_ITI_CATEGORY];
+              [path release];
+          }
+      }
+
+Remove the datasource and erase the path drawn, when the user ask a new location.
+
+The code will be like that:
+
+      - (void) searchBarSearchButtonClicked:(UISearchBar *)search
+      {
+          //..
+          // remove the path
+          [[viewController.mapView pathManager] removePath:HMP_ITI_CATEGORY];
+          // release the data source.
+          [dataSourceIti release];
+          dataSourceIti = nil;
+      }
+
+Now you can build and install the application on the iPhone simulator.
+
+To test it, ask a location, and tap on a marker on the map.
+
+[AfterCreationThumb]: http://farm6.static.flickr.com/5089/5330026339_11d19e116d_m.jpg
+[AfterCreation]: http://www.flickr.com/photos/58029342@N08/5330026339/
+[SetClassNameThumb]: http://farm6.static.flickr.com/5285/5330026677_ff50b79368_m.jpg
+[SetClassName]: http://www.flickr.com/photos/58029342@N08/5330026677/
+[FrameworkIntegrationThumb]: http://farm6.static.flickr.com/5046/5330635446_59f57a6fd8_m.jpg
+[FrameworkIntegration]: http://www.flickr.com/photos/58029342@N08/5330635446/
+[LinkerFlagsThumb]: http://farm6.static.flickr.com/5250/5330027017_f9763db2ef_m.jpg
+[LinkerFlags]: http://flic.kr/p/97ZMkx
+[SearchViewLinkThumb]: http://farm6.static.flickr.com/5050/5330635032_bf74e3058b_m.jpg
+[SearchViewLink]: http://flic.kr/p/983U5y
+
+----------
+Created by Mappy on 06/01/11.
+Copyright 2009-2011 Mappy SA. All rights reserved.
+Author : Antoine.

@@ -1,0 +1,12 @@
+
+MappyKit hello world ipad edition
+=================================
+
+# Context
+
+This sample show a simple ipad tutorial.
+
+----------
+Created by Mappy on 06/01/11.
+Copyright 2009-2011 Mappy SA. All rights reserved.
+Author : Antoine.
